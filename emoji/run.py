@@ -1,8 +1,6 @@
 import re
-import shutil
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Dict, List, TypedDict
+from typing import Dict, TypedDict
 
 from omuchat import App, Client, model
 
@@ -23,7 +21,6 @@ class Emoji(TypedDict):
 
 class registry:
     emojis: Dict[str, Emoji] = {}
-    emojis_dir: Path
 
 
 @client.omu.registry.listen("emojis")
@@ -35,32 +32,6 @@ class Directories(TypedDict):
     data: str
     assets: str
     plugins: str
-
-
-@client.omu.registry.listen("directories", app="server")
-async def on_directories(directories: Directories) -> None:
-    registry.emojis_dir = Path(directories["assets"]) / "emojis"
-    registry.emojis_dir.mkdir(parents=True, exist_ok=True)
-
-
-@client.omu.endpoints.listen(name="upload")
-async def upload_emoji(files: List[str]) -> None:
-    for file in files:
-        name = Path(file).stem
-        id = name
-        i = 1
-        while id in registry.emojis:
-            id = f"{name}{i}"
-            i += 1
-        path = registry.emojis_dir / f"{id}.png"
-        shutil.copyfile(file, path)
-        registry.emojis[id] = {
-            "id": id,
-            "name": name,
-            "image_url": f"http://{client.address}/assets?path=emojis/{id}.png",
-            "regex": re.escape(name),
-        }
-    await client.omu.registry.set("emojis", registry.emojis)
 
 
 @dataclass
